@@ -44,6 +44,7 @@ $ hexdump -C sces_012.37
 #include <map>
 #include <sstream>
 #include <iomanip>
+#include <fstream>
 
 /*
   ===========================================================================
@@ -84,7 +85,7 @@ std::ostream* outstream;
 
 namespace FileUtil
 {
-	class UnableToOpenFile {};       
+	class UnableToOpenFile {};
 	static const unsigned char* read_file(std::string f, unsigned int& sz) {
 		int fd = open(f.c_str(), O_RDONLY);
 		if ( fd < 0 ) throw UnableToOpenFile();
@@ -110,17 +111,17 @@ struct PS1Header {
 	u8 magic[8]; // PS-X EXE
 	u32 text;                            // ?
 	u32 data;                            // ?
-	u32 pc0;     
-	u32 gp0;     
-	u32 t_addr;  
-	u32 t_size;  
-	u32 d_addr;  
-	u32 d_size;  
-	u32 b_addr;  
-	u32 b_size;  
+	u32 pc0;
+	u32 gp0;
+	u32 t_addr;
+	u32 t_size;
+	u32 d_addr;
+	u32 d_size;
+	u32 b_addr;
+	u32 b_size;
 	u32 s_addr;
 	u32 s_size;
-	u32 sp,fp,gp,ret,base;	
+	u32 sp,fp,gp,ret,base;
 	u8 marker[1972];
 	PS1Header(const unsigned char* b) {
 		*this = *(const PS1Header*)b;
@@ -164,7 +165,7 @@ namespace R3000AInstruction
 		return (data >> shift) & ((1<<len_bit)-1);
 	}
 
-	static std::string hex2str(unsigned long long v, int l) 
+	static std::string hex2str(unsigned long v, int l) 
 	{
 		std::stringstream ss; 
 		ss << "0x" << std::hex << std::setfill('0') << std::setw(l) << v << std::dec; 
@@ -180,12 +181,12 @@ namespace R3000AInstruction
 		virtual std::ostream& str(std::ostream& os) const { return os; }
 		friend std::ostream& operator<<(std::ostream& os, const Generic& inst) 
 		{
-			os << hex2str(inst.pc, 16) << " " << inst.name() << " ";
+			os << hex2str(inst.pc, 8) << " " << inst.name() << " ";
 			inst.str(os);
 			return os;
 		}
 	};
-       
+	
 	struct JType : public Generic {
 		int target() const { return shift_mask(other, 26, 0); }
 		JType(const Generic& g) : Generic(g) {}
@@ -468,11 +469,11 @@ template <> void process(const R3000AInstruction::specl& s) { process_specl_map.
 
 	class UnalignedPCBeginException {};
 	class UnalignedPCEndException {};
-	static void disassemble(u32* pc, u32* pc_end) {
-		if ( (unsigned long long)pc & 0x3 ) throw UnalignedPCBeginException();
+	static void disassemble(const u8* data, u32 pc_start, u32 pc_end) {
+		if ( (unsigned long long)pc_start & 0x3 ) throw UnalignedPCBeginException();
 		if ( (unsigned long long)pc_end & 0x3 ) throw UnalignedPCEndException();
-		for ( ; pc != pc_end; pc++ ) {
-			R3000AInstruction::Generic inst(*pc, (unsigned long long)pc);
+		for ( u32 pc = pc_start ; pc < pc_end; pc += 4 ) {
+			R3000AInstruction::Generic inst(*(u32*)(data + pc), pc);
 			try {
 				process(inst);
 			} catch (std::out_of_range&) {
@@ -501,12 +502,8 @@ int main(int argc, char** argv)
 	*outstream << *f.h << "\n";
 	*outstream << "------\n";
 
-	// f.set_hook( [](R3000AInstruction::Generic& g){ std::cout << g << "\n"; } )	
-	unsigned int text_section_sz = f.h->t_size; 
-	unsigned int text_section_sz_left = text_section_sz - f.h->pc0_offset();
-	const unsigned char* text = f.text_section();
-	u32* pc = (u32*)text + (f.h->pc0_offset()/4);
-	PS1Disassemble::disassemble(pc, pc + text_section_sz_left/4);
+	u32 pc_start = f.text_section() - f.data;
+	PS1Disassemble::disassemble(f.data, pc_start, f.data_sz);
 		
 	return 0;
 }
