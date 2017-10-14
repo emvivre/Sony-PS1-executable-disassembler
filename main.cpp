@@ -141,15 +141,15 @@ struct PS1File
 {
 	std::string filename;	
 	unsigned int data_sz;
-	const unsigned char* data;
-	PS1Header* h;
+	union {
+		const unsigned char* data;
+		PS1Header* h;
+	};
 	PS1File(std::string filename) : filename(filename) {
 		data = FileUtil::read_file(filename, data_sz);
-		h = new PS1Header(data);
 	}
 	~PS1File() {
 		delete[] data;
-		delete h;
 	}
 	const unsigned char* text_section() const { return data + 0x800; }	
 };
