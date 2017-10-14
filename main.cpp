@@ -106,7 +106,7 @@ namespace FileUtil
 struct PS1Header {
 	u8 magic[8]; // PS-X EXE
 	u32 text;                            // ?
-	u32 data;                                   //?
+	u32 data;                            // ?
 	u32 pc0;     
 	u32 gp0;     
 	u32 t_addr;  
@@ -118,7 +118,7 @@ struct PS1Header {
 	u32 s_addr;
 	u32 s_size;
 	u32 sp,fp,gp,ret,base;	
-	u8 marker[52];
+	u8 marker[1972];
 	PS1Header(const unsigned char* b) {
 		*this = *(const PS1Header*)b;
 	}
