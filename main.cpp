@@ -71,6 +71,9 @@ typedef long double f96;
 
 unsigned int text_pc;
 
+std::ofstream outfile;
+std::ostream* outstream;
+
 /*
   ===========================================================================
   
@@ -361,7 +364,7 @@ namespace R3000AInstruction
 
 namespace PS1Disassemble
 {
-	template <class T> void process(const T& inst) { std::cout << inst << "\n"; }
+	template <class T> void process(const T& inst) { *outstream << inst << "\n"; }
 	template <> void process(const R3000AInstruction::bcond& b);
 	template <> void process(const R3000AInstruction::specl& s);
 	template <> void process(const R3000AInstruction::ch0&);
@@ -473,7 +476,7 @@ template <> void process(const R3000AInstruction::specl& s) { process_specl_map.
 			try {
 				process(inst);
 			} catch (std::out_of_range&) {
-				std::cout << inst << "\n";
+				*outstream << inst << "\n";
 			}
 		}
 	}
@@ -482,14 +485,21 @@ template <> void process(const R3000AInstruction::specl& s) { process_specl_map.
 int main(int argc, char** argv)
 {
 	if ( argc < 2 ) {
-		std::cout << "Usage: " << argv[0] << " <PS1_EXE>\n";
+		std::cout << "Usage: " << argv[0] << " <PS1_EXE> [OUTPUT FILE]\n";
 		return 1;
 	}
+	
+	if ( argc >= 3) {
+		outfile  = std::ofstream(argv[2]);
+		outstream = &outfile;
+	}
+	else outstream = &std::cout;
+	
 	int i = 0;
-	std::string ps1_exe = argv[++i]; std::cout << "ps1_exe: " << ps1_exe << "\n";
+	std::string ps1_exe = argv[++i]; *outstream << "ps1_exe: " << ps1_exe << "\n";
 	PS1File f(ps1_exe);
-	std::cout << *f.h << "\n";
-	std::cout << "------\n";
+	*outstream << *f.h << "\n";
+	*outstream << "------\n";
 
 	// f.set_hook( [](R3000AInstruction::Generic& g){ std::cout << g << "\n"; } )	
 	unsigned int text_section_sz = f.h->t_size; 
